@@ -48,4 +48,18 @@ export default defineNuxtConfig({
   nitro: {
     preset: 'node-server',
   },
+
+  vite: {
+    server: {
+      watch: {
+        ignored: [
+          '**/node_modules/**',
+          '**/.git/**',
+          '**/.nuxt/**',
+          '**/.output/**',
+          '**/dist/**',
+        ],
+      },
+    },
+  },
 })

@@ -12,31 +12,24 @@
     "typecheck": "nuxt typecheck"
   },
   "dependencies": {
-    "@pinia/nuxt": "0.5.5",
-    "@vueuse/core": "11.3.0",
-    "@vueuse/nuxt": "11.3.0",
-    "nuxt": "3.13.2",
-    "pinia": "2.2.6",
+    "@pinia/nuxt": "0.11.3",
+    "@vueuse/core": "12.8.2",
+    "@vueuse/nuxt": "12.8.2",
+    "nuxt": "3.17.7",
+    "pinia": "3.0.4",
     "vue": "3.5.13",
-    "vue-router": "4.4.5"
+    "vue-router": "4.5.0"
   },
   "devDependencies": {
-    "@nuxt/eslint": "0.6.1",
-    "@nuxtjs/tailwindcss": "6.12.2",
-    "@types/node": "20.17.6",
+    "@nuxt/eslint": "0.7.2",
+    "@nuxtjs/tailwindcss": "6.13.1",
+    "@types/node": "22.10.2",
     "autoprefixer": "10.4.20",
-    "eslint": "9.14.0",
+    "eslint": "9.17.0",
     "postcss": "8.4.49",
-    "tailwindcss": "3.4.14",
-    "typescript": "5.6.3",
-    "vue-tsc": "2.1.10"
-  },
-  "overrides": {
-    "nuxi": "3.13.2",
-    "nitropack": "2.9.7",
-    "c12": "1.11.2",
-    "unimport": "3.13.1",
-    "@nuxt/kit": "3.13.2"
+    "tailwindcss": "3.4.17",
+    "typescript": "5.7.2",
+    "vue-tsc": "2.2.0"
   },
   "engines": {
     "node": ">=18.0.0"
