@@ -33,7 +33,7 @@ const features = [
       </p>
       <div class="mt-10 flex justify-center gap-3">
         <NuxtLink to="/register" class="btn-primary px-6 py-3 text-base">Démarrer gratuitement</NuxtLink>
-        <a href="#how" class="btn-secondary px-6 py-3 text-base">Comment ça marche</a>
+        <NuxtLink to="/comment-ca-marche" class="btn-secondary px-6 py-3 text-base">Comment ça marche</NuxtLink>
       </div>
     </section>
 
