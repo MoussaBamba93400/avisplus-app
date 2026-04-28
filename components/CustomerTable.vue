@@ -32,9 +32,16 @@ const formatDate = (iso: string | null) =>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-200 bg-white">
-        <tr v-if="loading">
-          <td colspan="6" class="px-4 py-10 text-center text-sm text-slate-500">Chargement…</td>
-        </tr>
+        <template v-if="loading">
+          <tr v-for="i in 5" :key="`sk-${i}`" class="animate-pulse">
+            <td v-for="col in 5" :key="`sk-${i}-${col}`" class="px-4 py-3">
+              <div class="h-3 w-3/4 rounded bg-slate-200" />
+            </td>
+            <td class="px-4 py-3 text-right">
+              <div class="ml-auto h-3 w-20 rounded bg-slate-200" />
+            </td>
+          </tr>
+        </template>
         <tr v-else-if="customers.length === 0">
           <td colspan="6" class="px-4 py-10 text-center text-sm text-slate-500">
             Aucun client pour le moment.

@@ -18,7 +18,12 @@ export const useApi = () => {
       if (auth.activeBusinessId) headers.set('X-Business-ID', String(auth.activeBusinessId))
       options.headers = headers
     },
-    onResponseError({ response }: { response: FetchResponse<unknown> }) {
+    onResponseError({ response }: { response?: FetchResponse<unknown> }) {
+      // Erreur réseau pure (timeout, DNS, serveur down, CORS bloqué…) :
+      // pas de réponse HTTP exploitable, on relaisse remonter l'erreur
+      // d'origine au lieu d'écraser avec un TypeError.
+      if (!response) return
+
       if (response.status === 401) {
         auth.clear()
         if (import.meta.client && !['/login', '/register', '/'].includes(useRoute().path)) {

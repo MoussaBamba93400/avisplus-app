@@ -3,6 +3,7 @@ definePageMeta({ middleware: 'auth' })
 useHead({ title: 'Ajouter un client — Avis+' })
 
 const api = useApi()
+const toast = useToast()
 
 const mode = ref<'single' | 'csv'>('single')
 
@@ -24,9 +25,16 @@ const submitSingle = async () => {
   errors.value = {}
   try {
     await api.post('/customers', form)
+    toast.success('Client ajouté.')
     await navigateTo('/customers')
   } catch (e) {
-    errors.value = (e as { data?: { errors?: Record<string, string[]> } })?.data?.errors || {}
+    const fieldErrors = (e as { data?: { errors?: Record<string, string[]> } })?.data?.errors
+    if (fieldErrors && Object.keys(fieldErrors).length > 0) {
+      errors.value = fieldErrors
+      toast.error('Veuillez corriger les champs en rouge.')
+    } else {
+      toast.error(e)
+    }
   } finally {
     loading.value = false
   }
@@ -44,7 +52,14 @@ const submitCsv = async () => {
   try {
     const fd = new FormData()
     fd.append('file', file.value)
-    importResult.value = await api.post('/customers/import', fd)
+    const res = await api.post<{ imported: number; skipped: number }>('/customers/import', fd)
+    importResult.value = res
+    toast.success(
+      `${res.imported} client(s) importé(s)`,
+      res.skipped > 0 ? { description: `${res.skipped} ligne(s) ignorée(s).` } : undefined,
+    )
+  } catch (e) {
+    toast.error(e)
   } finally {
     loading.value = false
   }
@@ -60,6 +75,7 @@ const submitCsv = async () => {
 
     <div class="mb-6 flex gap-2">
       <button
+        type="button"
         class="btn"
         :class="mode === 'single' ? 'bg-brand-600 text-white' : 'bg-white ring-1 ring-slate-300 text-slate-700'"
         @click="mode = 'single'"
@@ -67,6 +83,7 @@ const submitCsv = async () => {
         Ajout unitaire
       </button>
       <button
+        type="button"
         class="btn"
         :class="mode === 'csv' ? 'bg-brand-600 text-white' : 'bg-white ring-1 ring-slate-300 text-slate-700'"
         @click="mode = 'csv'"
@@ -88,6 +105,7 @@ const submitCsv = async () => {
       <div>
         <label class="label">Email</label>
         <input v-model="form.email" type="email" class="input" />
+        <p v-if="errors.email" class="mt-1 text-xs text-rose-600">{{ errors.email[0] }}</p>
       </div>
       <div>
         <label class="label">Dernière visite</label>
@@ -97,7 +115,12 @@ const submitCsv = async () => {
         <label class="label">Notes internes</label>
         <textarea v-model="form.notes" rows="3" class="input" />
       </div>
-      <button type="submit" :disabled="loading" class="btn-primary w-full">
+      <button
+        type="submit"
+        :disabled="loading"
+        class="btn-primary inline-flex w-full items-center justify-center gap-2"
+      >
+        <Spinner v-if="loading" size="xs" tone="white" />
         {{ loading ? 'Enregistrement…' : 'Ajouter' }}
       </button>
     </form>
@@ -111,11 +134,16 @@ const submitCsv = async () => {
           Première ligne ignorée si c'est un en-tête.
         </p>
       </div>
-      <button type="submit" :disabled="!file || loading" class="btn-primary w-full">
+      <button
+        type="submit"
+        :disabled="!file || loading"
+        class="btn-primary inline-flex w-full items-center justify-center gap-2"
+      >
+        <Spinner v-if="loading" size="xs" tone="white" />
         {{ loading ? 'Import…' : 'Importer' }}
       </button>
 
-      <div v-if="importResult" class="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+      <div v-if="importResult" class="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200">
         {{ importResult.imported }} client(s) importé(s), {{ importResult.skipped }} ligne(s) ignorée(s).
       </div>
     </form>

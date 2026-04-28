@@ -7,8 +7,10 @@ useHead({ title: 'Paramètres — Avis+' })
 
 const api = useApi()
 const auth = useAuthStore()
-const { businesses, activeBusiness } = storeToRefs(auth)
-const { list, create, update } = useBusiness()
+const { activeBusiness } = storeToRefs(auth)
+const { list, create, update, destroy } = useBusiness()
+const toast = useToast()
+const { confirm } = useConfirm()
 
 type BusinessDetails = Business & {
   phone: string | null
@@ -23,38 +25,100 @@ type BusinessDetails = Business & {
   auto_send_enabled: boolean
 }
 
-const form = reactive<Partial<BusinessDetails>>({})
+const emptyForm = (): Partial<BusinessDetails> => ({
+  name: '',
+  phone: '',
+  address: '',
+  city: '',
+  postal_code: '',
+  google_review_url: '',
+  sms_sender: '',
+  review_sms_template: '',
+  review_request_delay_hours: 24,
+  minimum_rating_for_google: 4,
+  auto_send_enabled: false,
+})
+
+const form = reactive<Partial<BusinessDetails>>(emptyForm())
 const loading = ref(false)
-const saved = ref(false)
+const deleting = ref(false)
+const initialLoading = ref(false)
 const mode = ref<'edit' | 'new'>('edit')
+
+const resetForm = (target: Partial<BusinessDetails> = emptyForm()) => {
+  Object.keys(form).forEach((k) => delete (form as Record<string, unknown>)[k])
+  Object.assign(form, target)
+}
 
 const loadCurrent = async () => {
   if (!activeBusiness.value) {
     mode.value = 'new'
+    resetForm()
     return
   }
-  const details = await api.get<BusinessDetails>(`/businesses/${activeBusiness.value.id}`)
-  Object.assign(form, details)
+  mode.value = 'edit'
+  initialLoading.value = true
+  try {
+    const details = await api.get<BusinessDetails>(`/businesses/${activeBusiness.value.id}`)
+    resetForm(details)
+  } catch (e) {
+    toast.error(e)
+  } finally {
+    initialLoading.value = false
+  }
+}
+
+const startNew = () => {
+  mode.value = 'new'
+  resetForm()
 }
 
 const save = async () => {
   loading.value = true
-  saved.value = false
   try {
     if (mode.value === 'new') {
       await create(form as never)
+      mode.value = 'edit'
+      toast.success('Entreprise créée.')
     } else if (activeBusiness.value) {
       await update(activeBusiness.value.id, form as never)
+      toast.success('Modifications enregistrées.')
     }
     await list()
-    saved.value = true
-    setTimeout(() => (saved.value = false), 3000)
+    await loadCurrent()
+  } catch (e) {
+    toast.error(e)
   } finally {
     loading.value = false
   }
 }
 
-watch(activeBusiness, () => loadCurrent(), { immediate: false })
+const remove = async () => {
+  if (!activeBusiness.value) return
+  const name = activeBusiness.value.name
+  const ok = await confirm({
+    title: `Supprimer « ${name} » ?`,
+    message:
+      'Cette action est irréversible. Les clients, demandes d\'avis et avis associés seront également supprimés.',
+    confirmLabel: 'Supprimer',
+    cancelLabel: 'Annuler',
+    tone: 'danger',
+  })
+  if (!ok) return
+
+  deleting.value = true
+  try {
+    await destroy(activeBusiness.value.id)
+    toast.success(`« ${name} » a bien été supprimée.`)
+    await loadCurrent()
+  } catch (e) {
+    toast.error(e)
+  } finally {
+    deleting.value = false
+  }
+}
+
+watch(activeBusiness, () => loadCurrent())
 onMounted(loadCurrent)
 </script>
 
@@ -64,19 +128,32 @@ onMounted(loadCurrent)
       <div>
         <h1 class="text-2xl font-semibold text-slate-900">Paramètres</h1>
         <p class="text-sm text-slate-500">
-          {{ mode === 'new' ? 'Créez votre première entreprise' : 'Gérer l\'entreprise active' }}
+          {{ mode === 'new' ? 'Créez une nouvelle entreprise' : 'Gérer l\'entreprise active' }}
         </p>
       </div>
       <button
         v-if="mode === 'edit'"
+        type="button"
         class="btn-secondary"
-        @click="() => { mode = 'new'; Object.keys(form).forEach(k => delete (form as any)[k]) }"
+        @click="startNew"
       >
         + Nouvelle entreprise
       </button>
     </div>
 
-    <form class="card max-w-2xl space-y-5" @submit.prevent="save">
+    <div v-if="initialLoading" class="card max-w-2xl space-y-4" aria-busy="true">
+      <div class="h-5 w-1/3 animate-pulse rounded bg-slate-200" />
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="h-10 animate-pulse rounded-lg bg-slate-100" />
+        <div class="h-10 animate-pulse rounded-lg bg-slate-100" />
+        <div class="h-10 animate-pulse rounded-lg bg-slate-100 sm:col-span-2" />
+        <div class="h-10 animate-pulse rounded-lg bg-slate-100" />
+        <div class="h-10 animate-pulse rounded-lg bg-slate-100" />
+      </div>
+      <div class="h-24 animate-pulse rounded-lg bg-slate-100" />
+    </div>
+
+    <form v-else class="card max-w-2xl space-y-5" @submit.prevent="save">
       <h2 class="text-lg font-semibold text-slate-900">Informations</h2>
 
       <div class="grid gap-4 sm:grid-cols-2">
@@ -143,11 +220,29 @@ onMounted(loadCurrent)
         Envoyer automatiquement les SMS après la visite
       </label>
 
-      <div class="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
-        <span v-if="saved" class="text-sm text-emerald-600">✓ Enregistré</span>
-        <button type="submit" :disabled="loading" class="btn-primary">
-          {{ loading ? 'Enregistrement…' : mode === 'new' ? 'Créer' : 'Enregistrer' }}
-        </button>
+      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
+        <div>
+          <button
+            v-if="mode === 'edit' && activeBusiness"
+            type="button"
+            class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="deleting || loading"
+            @click="remove"
+          >
+            <Spinner v-if="deleting" size="xs" tone="current" />
+            {{ deleting ? 'Suppression…' : 'Supprimer cette entreprise' }}
+          </button>
+        </div>
+        <div class="flex items-center gap-3">
+          <button
+            type="submit"
+            :disabled="loading || deleting"
+            class="btn-primary inline-flex items-center gap-2"
+          >
+            <Spinner v-if="loading" size="xs" tone="white" />
+            {{ loading ? 'Enregistrement…' : mode === 'new' ? 'Créer' : 'Enregistrer' }}
+          </button>
+        </div>
       </div>
     </form>
   </AppLayout>

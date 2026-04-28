@@ -3,6 +3,7 @@ definePageMeta({ layout: false })
 useHead({ title: 'Créer un compte — Avis+' })
 
 const { register } = useAuth()
+const toast = useToast()
 
 const form = reactive({
   name: '',
@@ -18,9 +19,16 @@ const submit = async () => {
   errors.value = {}
   try {
     await register({ ...form })
+    toast.success('Bienvenue !', { description: 'Votre compte a été créé.' })
     await navigateTo('/settings')
   } catch (e) {
-    errors.value = (e as { data?: { errors?: Record<string, string[]> } })?.data?.errors || {}
+    const fieldErrors = (e as { data?: { errors?: Record<string, string[]> } })?.data?.errors
+    if (fieldErrors && Object.keys(fieldErrors).length > 0) {
+      errors.value = fieldErrors
+      toast.error('Veuillez corriger les champs en rouge.')
+    } else {
+      toast.error(e)
+    }
   } finally {
     loading.value = false
   }
@@ -60,7 +68,12 @@ const submit = async () => {
           <input v-model="form.password_confirmation" required type="password" class="input" autocomplete="new-password" />
         </div>
 
-        <button type="submit" :disabled="loading" class="btn-primary w-full">
+        <button
+          type="submit"
+          :disabled="loading"
+          class="btn-primary inline-flex w-full items-center justify-center gap-2"
+        >
+          <Spinner v-if="loading" size="xs" tone="white" />
           {{ loading ? 'Création…' : 'Créer mon compte' }}
         </button>
 

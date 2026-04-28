@@ -41,7 +41,23 @@ export const useBusiness = () => {
     return business
   }
 
+  const destroy = async (id: number) => {
+    await api.delete(`/businesses/${id}`)
+    const remaining = await list()
+    if (auth.activeBusinessId === id) {
+      const next = remaining[0]?.id ?? null
+      if (next !== null) {
+        auth.setActiveBusiness(next)
+      } else {
+        auth.activeBusinessId = null
+        if (import.meta.client) {
+          localStorage.removeItem('avisplus.activeBusinessId')
+        }
+      }
+    }
+  }
+
   const switchTo = (id: number) => auth.setActiveBusiness(id)
 
-  return { businesses, activeBusinessId, activeBusiness, list, create, update, switchTo }
+  return { businesses, activeBusinessId, activeBusiness, list, create, update, destroy, switchTo }
 }

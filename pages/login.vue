@@ -4,21 +4,20 @@ useHead({ title: 'Connexion — Avis+' })
 
 const { login } = useAuth()
 const route = useRoute()
+const toast = useToast()
 
 const form = reactive({ email: '', password: '' })
 const loading = ref(false)
-const error = ref<string | null>(null)
 
 const submit = async () => {
   loading.value = true
-  error.value = null
   try {
     await login({ email: form.email, password: form.password })
+    toast.success('Connexion réussie. Bienvenue !')
     const redirect = (route.query.redirect as string) || '/dashboard'
     await navigateTo(redirect)
   } catch (e) {
-    const msg = (e as { data?: { message?: string } })?.data?.message
-    error.value = msg || 'Identifiants invalides.'
+    toast.error(e, { description: 'Vérifiez votre email et votre mot de passe.' })
   } finally {
     loading.value = false
   }
@@ -47,9 +46,12 @@ const submit = async () => {
           <input v-model="form.password" required type="password" autocomplete="current-password" class="input" />
         </div>
 
-        <p v-if="error" class="text-sm text-rose-600">{{ error }}</p>
-
-        <button type="submit" :disabled="loading" class="btn-primary w-full">
+        <button
+          type="submit"
+          :disabled="loading"
+          class="btn-primary inline-flex w-full items-center justify-center gap-2"
+        >
+          <Spinner v-if="loading" size="xs" tone="white" />
           {{ loading ? 'Connexion…' : 'Se connecter' }}
         </button>
 

@@ -13,10 +13,12 @@ interface Customer {
 interface Paginated<T> { data: T[]; current_page: number; last_page: number; total: number }
 
 const api = useApi()
+const toast = useToast()
+const { confirm } = useConfirm()
+
 const customers = ref<Customer[]>([])
 const pagination = ref({ page: 1, total: 0, lastPage: 1 })
 const loading = ref(true)
-const toast = ref<string | null>(null)
 
 const fetchCustomers = async (page = 1) => {
   loading.value = true
@@ -26,25 +28,41 @@ const fetchCustomers = async (page = 1) => {
     )
     customers.value = data
     pagination.value = { page: current_page, lastPage: last_page, total }
+  } catch (e) {
+    toast.error(e)
   } finally {
     loading.value = false
   }
 }
 
 const onSendSms = async (c: Customer) => {
-  try {
-    await api.post(`/customers/${c.id}/sms`)
-    toast.value = `SMS programmé pour ${c.name || c.phone}.`
-    setTimeout(() => (toast.value = null), 3000)
-  } catch (e) {
-    toast.value = `Erreur: ${(e as Error).message}`
-  }
+  await toast.promise(api.post(`/customers/${c.id}/sms`), {
+    loading: 'Envoi du SMS…',
+    success: `SMS programmé pour ${c.name || c.phone}.`,
+    error: (err) => {
+      const e = err as { data?: { message?: string }; message?: string }
+      return e?.data?.message ?? e?.message ?? 'Échec de l\'envoi du SMS.'
+    },
+  })
 }
 
 const onDelete = async (c: Customer) => {
-  if (!confirm(`Supprimer ${c.name || c.phone} ?`)) return
-  await api.delete(`/customers/${c.id}`)
-  await fetchCustomers(pagination.value.page)
+  const label = c.name || c.phone
+  const ok = await confirm({
+    title: `Supprimer ${label} ?`,
+    message: 'Le client et son historique de SMS seront supprimés. Cette action est irréversible.',
+    confirmLabel: 'Supprimer',
+    cancelLabel: 'Annuler',
+    tone: 'danger',
+  })
+  if (!ok) return
+  try {
+    await api.delete(`/customers/${c.id}`)
+    toast.success(`${label} supprimé.`)
+    await fetchCustomers(pagination.value.page)
+  } catch (e) {
+    toast.error(e)
+  }
 }
 
 onMounted(() => fetchCustomers())
@@ -58,13 +76,6 @@ onMounted(() => fetchCustomers())
         <p class="text-sm text-slate-500">{{ pagination.total }} contact(s)</p>
       </div>
       <NuxtLink to="/customers/add" class="btn-primary">+ Ajouter</NuxtLink>
-    </div>
-
-    <div
-      v-if="toast"
-      class="mb-4 rounded-lg bg-emerald-50 px-4 py-2 text-sm text-emerald-700 ring-1 ring-inset ring-emerald-200"
-    >
-      {{ toast }}
     </div>
 
     <CustomerTable
