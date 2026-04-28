@@ -2,7 +2,14 @@ import { useAuthStore, type Business, type User } from '~/stores/auth'
 
 interface LoginPayload { email: string; password: string }
 interface RegisterPayload { name: string; email: string; password: string; password_confirmation: string }
-interface AuthResponse { user: User; token: string }
+
+interface AuthResponse {
+  user: User
+  token: string
+  token_type: 'bearer'
+  expires_in: number
+}
+
 interface MeResponse { user: User; businesses: Business[] }
 
 export const useAuth = () => {
@@ -44,5 +51,22 @@ export const useAuth = () => {
     }
   }
 
-  return { login, register, logout, refreshMe }
+  /**
+   * Échange le JWT courant contre un nouveau (sans demander les credentials).
+   * À appeler avant l'expiration ou à la suite d'un 401 si on veut tenter
+   * une récupération avant de rediriger vers /login.
+   */
+  const refreshToken = async () => {
+    if (!auth.token) return null
+    try {
+      const { user, token } = await api.post<AuthResponse>('/auth/refresh')
+      auth.setSession({ user, token })
+      return token
+    } catch {
+      auth.clear()
+      return null
+    }
+  }
+
+  return { login, register, logout, refreshMe, refreshToken }
 }

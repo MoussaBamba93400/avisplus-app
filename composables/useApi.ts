@@ -3,7 +3,7 @@ import { useAuthStore } from '~/stores/auth'
 
 /**
  * Thin wrapper around `$fetch` that automatically injects the API base URL,
- * the Sanctum bearer token, and the active business ID header.
+ * the JWT bearer token, and the active business ID header.
  */
 export const useApi = () => {
   const config = useRuntimeConfig()
@@ -11,7 +11,6 @@ export const useApi = () => {
 
   const apiFetch = $fetch.create({
     baseURL: config.public.apiBaseUrl,
-    credentials: 'include',
     onRequest({ options }) {
       const headers = new Headers(options.headers as HeadersInit | undefined)
       headers.set('Accept', 'application/json')
