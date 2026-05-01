@@ -20,13 +20,30 @@ interface Stats {
   }
 }
 
+interface Review {
+  id: number
+  rating: number
+  comment: string | null
+  is_public: boolean
+  forwarded_to_google: boolean
+  contact_email: string | null
+  submitted_at: string
+  customer: { id: number; name: string | null; phone: string } | null
+}
+
 const api = useApi()
 const stats = ref<Stats | null>(null)
+const latestReviews = ref<Review[]>([])
 const loading = ref(true)
 
 onMounted(async () => {
   try {
-    stats.value = await api.get<Stats>('/reviews/stats?days=30')
+    const [statsData, reviewsData] = await Promise.all([
+      api.get<Stats>('/reviews/stats?days=30'),
+      api.get<{ data: Review[] }>('/reviews?per_page=5'),
+    ])
+    stats.value = statsData
+    latestReviews.value = reviewsData.data
   } finally {
     loading.value = false
   }
@@ -86,6 +103,16 @@ const pct = (n: number) => `${Math.round(n * 100)}%`
             <dt class="text-slate-500">Taux de clic</dt><dd class="text-right font-semibold text-brand-700">{{ pct(stats.sms.click_through_rate) }}</dd>
             <dt class="text-slate-500">Taux de conversion</dt><dd class="text-right font-semibold text-brand-700">{{ pct(stats.sms.conversion_rate) }}</dd>
           </dl>
+        </div>
+      </div>
+
+      <div v-if="latestReviews.length > 0">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-base font-semibold text-slate-900">Derniers avis</h2>
+          <NuxtLink to="/reviews" class="text-sm text-brand-600 hover:underline">Voir tous →</NuxtLink>
+        </div>
+        <div class="space-y-3">
+          <ReviewCard v-for="r in latestReviews" :key="r.id" :review="r" />
         </div>
       </div>
     </div>

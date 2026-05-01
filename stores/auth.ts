@@ -6,6 +6,7 @@ export interface Business {
   slug: string
   is_active: boolean
   google_review_url: string | null
+  logo_url: string | null
 }
 
 export interface User {

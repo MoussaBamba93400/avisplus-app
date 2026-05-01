@@ -27,6 +27,9 @@ export const useAuth = () => {
     const { user, token } = await api.post<AuthResponse>('/auth/register', payload)
     auth.setSession({ user, token })
     await refreshMe()
+    if (!auth.businesses.length) {
+      await navigateTo('/onboarding')
+    }
     return user
   }
 

@@ -12,6 +12,34 @@ const { list, create, update, destroy } = useBusiness()
 const toast = useToast()
 const { confirm } = useConfirm()
 
+const logoFile = ref<File | null>(null)
+const logoPreview = ref<string | null>(null)
+const logoUploading = ref(false)
+
+const onLogoChange = (e: Event) => {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  logoFile.value = file
+  logoPreview.value = URL.createObjectURL(file)
+}
+
+const uploadLogo = async () => {
+  if (!logoFile.value || !activeBusiness.value) return
+  logoUploading.value = true
+  try {
+    const fd = new FormData()
+    fd.append('logo', logoFile.value)
+    await api.post(`/businesses/${activeBusiness.value.id}/logo`, fd)
+    toast.success('Logo mis à jour.')
+    logoFile.value = null
+    await list()
+  } catch (e) {
+    toast.error(e)
+  } finally {
+    logoUploading.value = false
+  }
+}
+
 type BusinessDetails = Business & {
   phone: string | null
   address: string | null
@@ -155,6 +183,44 @@ onMounted(loadCurrent)
 
     <form v-else class="card max-w-2xl space-y-5" @submit.prevent="save">
       <h2 class="text-lg font-semibold text-slate-900">Informations</h2>
+
+      <div v-if="mode === 'edit' && activeBusiness">
+        <label class="label">Logo</label>
+        <div class="flex items-center gap-4">
+          <img
+            v-if="logoPreview || activeBusiness.logo_url"
+            :src="logoPreview || activeBusiness.logo_url"
+            alt="Logo"
+            class="h-16 w-16 rounded-lg object-cover ring-1 ring-slate-200"
+          />
+          <div v-else class="flex h-16 w-16 items-center justify-center rounded-lg bg-slate-100 text-xs text-slate-400">
+            Aucun
+          </div>
+          <div class="flex flex-col gap-2">
+            <input
+              id="logo-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/svg+xml"
+              class="hidden"
+              @change="onLogoChange"
+            />
+            <label for="logo-input" class="btn-secondary cursor-pointer text-sm">
+              Choisir un fichier
+            </label>
+            <button
+              v-if="logoFile"
+              type="button"
+              :disabled="logoUploading"
+              class="btn-primary inline-flex items-center gap-2 text-sm"
+              @click="uploadLogo"
+            >
+              <Spinner v-if="logoUploading" size="xs" tone="white" />
+              {{ logoUploading ? 'Envoi…' : 'Envoyer' }}
+            </button>
+          </div>
+        </div>
+        <p class="mt-1 text-xs text-slate-500">JPEG, PNG, WebP ou SVG — max 2 Mo</p>
+      </div>
 
       <div class="grid gap-4 sm:grid-cols-2">
         <div>
